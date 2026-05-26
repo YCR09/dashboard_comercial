@@ -14,7 +14,7 @@ import os
 
 load_dotenv()
 
-PASSWORD = st.secret("PASSWORD")
+PASSWORD = st.secrets["PASSWORD"]
 
 # Configiración Dashboard
 st.set_page_config(page_title="Frecuencia Predictiva de compras", page_icon="📊", layout="wide")
