@@ -252,7 +252,7 @@ if uploaded_file:
     #st.download_button(
     #    "📥 Descargar resultados cvs",
     #    csv,
-    #    "prediccion_clientes.csv",
+    #    "pronostico.csv",
     #    "text/csv"
     #)
 
