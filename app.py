@@ -28,7 +28,7 @@ PASSWORD = st.secrets["PASSWORD"]
 
 # Configiración Dashboard
 st.set_page_config(page_title="Frecuencia Predictiva de compras", page_icon="📊", layout="wide")
-st.title("📈 Pronóstico de Próxima Compra")
+st.title("📈 DEMO Pronóstico de Próxima Compra")
 
 # estado login
 if "authenticated" not in st.session_state:
@@ -96,50 +96,87 @@ if uploaded_file:
         #intervalos = grupo["dias_entre_compras"].dropna()
         intervalos = grupo["dias_entre_compras"].fillna(0)
 
-        if len(intervalos) == 0:
+        #if len(intervalos) == 0:
+        #    continue
+
+        if len(intervalos) < 2:
             continue
-    
+        
         # calcula solo las 5 últimas compras con tail(5)
         media_dias = intervalos.tail(5).mean()
 
         #media_dias = intervalos.mean()
 
+         # calcula la media movil ponderada
+        intervalos_recientes = intervalos.tail(5)
+
+        #calcula el peso de cada cliente según la cantidad de compra
+        pesos = np.arange(1, len(intervalos_recientes) + 1)
+
+        media_ponderada = (intervalos_recientes * pesos).sum() / sum(pesos)
+        
         ultima_fecha = grupo["fecha"].max()
 
-        proxima_compra = (
+        #Calculo de la proxima compra con la media móvil
+        proxima_compra_media = (
             ultima_fecha +
             pd.Timedelta(days=media_dias)
         )
 
-        dias_restantes = (
-            proxima_compra - pd.Timestamp.today()
+        dias_restantes_media = (
+            proxima_compra_media - pd.Timestamp.today()
+        ).days
+
+        #Calculo de la proxima compra con la media ponderada
+        proxima_compra_ponderada = (
+            ultima_fecha +
+            pd.Timedelta(days=media_ponderada)
+        )
+
+        dias_restantes_ponderada = (
+            proxima_compra_ponderada - pd.Timestamp.today()
         ).days
     
         # prioridad
-        if dias_restantes <= 3:
+        if dias_restantes_media <= 3:
            prioridad = "Alta"
-        elif dias_restantes <= 7:
+        elif dias_restantes_media <= 7:
             prioridad = "Media"
         else:
             prioridad = "Baja"
+
+        #calulo de la confinaza del cliente
+        desviacion = intervalos_recientes.std()
+
+        if desviacion < 10:
+            confianza = "Alta"
+        elif desviacion < 25:
+            confianza = "Media"
+        else:
+            confianza = "Baja"
+
+        #calculo de la media de las medias
+        media_total = (dias_restantes_media + dias_restantes_ponderada) / 2
     
         resultados.append({
             "cliente": cliente,
             "ultima_compra": ultima_fecha.date(),
             "media_dias": round(media_dias, 1),
-            "proxima_compra": proxima_compra.date(),
-            "dias_restantes": dias_restantes,
-            "prioridad": prioridad
+            "proxima_compra_media": proxima_compra_media.date(),
+            "dias_restantes_media": dias_restantes_media,
+            "prioridad": prioridad,
+            "proxima_compra_ponderada": proxima_compra_ponderada.date(),
+            "dias_restantes_ponderada": dias_restantes_ponderada,
+            "confianza": confianza,
+            "media_total": round(media_total, 0) 
         })
 
     resultado_df = pd.DataFrame(resultados)
 
     # ordenar por próxima compra
     resultado_df = resultado_df.sort_values(
-        "dias_restantes"
+        "media_total"
     )
-
-
 
 # KPIs
 
@@ -280,7 +317,7 @@ if uploaded_file:
     st.download_button(
         "📥 Descargar lista ordenada excel",
         data=excel_buffer,
-        file_name="prediccion_clientes.xlsx",
+        file_name="pronostico.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     # botón cerrar sesión
