@@ -137,14 +137,6 @@ if uploaded_file:
             proxima_compra_ponderada - pd.Timestamp.today()
         ).days
     
-        # prioridad
-        if dias_restantes_media <= 3:
-           prioridad = "Alta"
-        elif dias_restantes_media <= 7:
-            prioridad = "Media"
-        else:
-            prioridad = "Baja"
-
         #calulo de la confinaza del cliente
         desviacion = intervalos_recientes.std()
 
@@ -157,25 +149,33 @@ if uploaded_file:
 
         #calculo de la media de las medias
         media_total = (dias_restantes_media + dias_restantes_ponderada) / 2
+
+         # prioridad
+        if media_total <= 3:
+           prioridad = "Alta"
+        elif media_total <= 7:
+            prioridad = "Media"
+        else:
+            prioridad = "Baja"
     
         resultados.append({
             "cliente": cliente,
             "ultima_compra": ultima_fecha.date(),
-            "media_dias": round(media_dias, 1),
-            "proxima_compra_media": proxima_compra_media.date(),
-            "dias_restantes_media": dias_restantes_media,
+#            "media_dias": round(media_dias, 1),
+#           "proxima_compra_media": proxima_compra_media.date(),
+#            "dias_restantes_media": dias_restantes_media,
             "prioridad": prioridad,
-            "proxima_compra_ponderada": proxima_compra_ponderada.date(),
-            "dias_restantes_ponderada": dias_restantes_ponderada,
+#            "proxima_compra_ponderada": proxima_compra_ponderada.date(),
+#            "dias_restantes_ponderada": dias_restantes_ponderada,
             "confianza": confianza,
-            "media_total": round(media_total, 0) 
+            "total_dias": round(media_total, 0) 
         })
 
     resultado_df = pd.DataFrame(resultados)
 
     # ordenar por próxima compra
     resultado_df = resultado_df.sort_values(
-        "media_total"
+        "total_dias"
     )
 
 # KPIs
@@ -199,7 +199,7 @@ if uploaded_file:
     col3.metric(
         "Media días compra",
         round(
-            resultado_df["media_dias"].mean(),
+            resultado_df["total_dias"].mean(),
             1
         )
     )
@@ -233,7 +233,8 @@ if uploaded_file:
             title="Clientes por prioridad",
             color="prioridad",
             text_auto=True,
-            color_discrete_sequence=['red', 'yellow', 'green']
+#            color_discrete_sequence=['red', 'yellow', 'green']
+            color_discrete_sequence=px.colors.qualitative.Set1
         )
 
         st.plotly_chart(
@@ -261,7 +262,8 @@ if uploaded_file:
             names="prioridad",
             values="cantidad",
             title="Clientes por prioridad",
-            color_discrete_sequence=colores
+#            color_discrete_sequence=colores
+            color_discrete_sequence=px.colors.qualitative.G10
         )
 
         st.plotly_chart(
