@@ -61,7 +61,7 @@ if not st.session_state.authenticated:
 # subir excel
 
 uploaded_file = st.file_uploader(
-    "Sube archivo Excel con dos columnas en minúsculas : cliente , fecha",
+    "Sube archivo Excel con dos columnas en minúsculas : cliente , fecha, ventas",
     type=["xlsx"]
 )
 
@@ -157,6 +157,10 @@ if uploaded_file:
             prioridad = "Media"
         else:
             prioridad = "Baja"
+
+        total_ventas = round(grupo["ventas"].sum(), 2)
+        media_ventas = round(grupo["ventas"].mean(), 2)
+        cantidad_ventas = grupo["ventas"].count()
     
         resultados.append({
             "cliente": cliente,
@@ -168,7 +172,10 @@ if uploaded_file:
 #            "proxima_compra_ponderada": proxima_compra_ponderada.date(),
 #            "dias_restantes_ponderada": dias_restantes_ponderada,
             "confianza": confianza,
-            "total_dias": round(media_total, 0) 
+            "total_dias": round(media_total, 0),
+            "total_ventas": total_ventas,
+            "media_ventas": media_ventas,
+            "cantidad_ventas": cantidad_ventas
         })
 
     resultado_df = pd.DataFrame(resultados)
@@ -180,7 +187,7 @@ if uploaded_file:
 
 # KPIs
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     col1.metric(
         "Clientes",
@@ -203,6 +210,12 @@ if uploaded_file:
             1
         )
     )
+
+    col4.metric(
+        "Media venta", f"€{round(resultado_df['media_ventas'].mean(), 2)}"
+        )
+
+    st.divider()
 
     st.divider()
 
