@@ -291,7 +291,7 @@ if uploaded_file:
     st.subheader("🚨 Top clientes urgentes 🚨")
 
     st.dataframe(
-        resultado_df.head(10),
+        resultado_df.head(20),
         use_container_width=True
     )
     
