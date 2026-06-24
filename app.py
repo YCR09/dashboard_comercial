@@ -324,7 +324,7 @@ if uploaded_file:
         resultado_df.to_excel(
             writer,
             index=False,
-            sheet_name="Prediccion"
+            sheet_name="Lista"
         )
 
     excel_buffer.seek(0)
@@ -332,7 +332,7 @@ if uploaded_file:
     st.download_button(
         "📥 Descargar lista ordenada excel",
         data=excel_buffer,
-        file_name="pronostico.xlsx",
+        file_name="pronóstico.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     # botón cerrar sesión
