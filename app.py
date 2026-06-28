@@ -100,7 +100,7 @@ if uploaded_file:
         #if len(intervalos) == 0:
         #    continue
 
-        if len(intervalos) < 2:
+        if len(intervalos) < 1:
             continue
         
         # calcula solo las 5 últimas compras con tail(5)
