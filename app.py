@@ -28,7 +28,8 @@ PASSWORD = st.secrets["PASSWORD"]
 
 # Configiración Dashboard
 st.set_page_config(page_title="Frecuencia Predictiva de compras", page_icon="📊", layout="wide")
-st.title("📈 DEMO Pronóstico de Próxima Compra")
+st.title("📈 Dashboard -  Pronóstico de Compras")
+st.markdown("---")
 
 # estado login
 if "authenticated" not in st.session_state:
@@ -185,8 +186,8 @@ if uploaded_file:
         "total_dias"
     )
 
-# KPIs
-
+# ********************* KPIs *****************************
+    st.markdown("## ✔ KPI's ")
     col1, col2, col3, col4 = st.columns(4)
 
     col1.metric(
@@ -206,21 +207,19 @@ if uploaded_file:
     col3.metric(
         "Media días compra",
         round(
-            resultado_df["total_dias"].mean(),
+            resultado_df["total_dias"].abs().mean(),
             1
         )
     )
 
     col4.metric(
-        "Media venta", f"€{round(resultado_df['media_ventas'].mean(), 2)}"
+        #"Media venta", f"€{round(resultado_df['media_ventas'].mean(), 2)}"
+        "Pedidos", len(df)
         )
 
     st.divider()
-
-    st.divider()
-
-    
-    #   tabla principal
+ 
+    #  ************************* tabla principal  ********************************
    
     st.subheader("☎️ Lista Ordenada de Clientes próximos a comprar ☎️")
 
@@ -230,8 +229,73 @@ if uploaded_file:
     )
 
     
-    # gráficos
- 
+    # ***************************  gráficos   **********************************
+
+    st.markdown('## ✔ Análisis de Pedidos y Clientes')
+
+    # Ventas por mes
+    df_ventas_mes = (
+                df.groupby(df["fecha"].dt.to_period("M"))
+                .size()
+                .reset_index(name="ventas")
+            )
+        
+        # Renombrar la columna del período
+    df_ventas_mes.rename(columns={"fecha": "mes"}, inplace=True)
+
+        # Convertir a texto
+    df_ventas_mes["mes"] = df_ventas_mes["mes"].astype(str)
+
+    fig_mes = px.bar(
+            df_ventas_mes,
+            x="mes",
+            y='ventas',
+            title="📝 Número de Pedidos por Mes",
+            #color="fecha",
+            text_auto=True,
+            #labels={"fecha": "Mes", "count": "Cantidad de Pedidos"}
+            
+        )
+        #fig_mes.update_layout(bargap=0.2) # Añade espacio entre barras
+    fig_mes.update_traces(textposition="outside")
+        
+    st.plotly_chart(
+                fig_mes,
+                use_container_width=True
+            )
+
+        #Clientes únicos por mes
+
+        #3. Calcular clientes únicos por mes
+    df_clientes_mes = (
+            df.groupby(df["fecha"].dt.to_period("M"))
+            .agg(clientes_unicos=("cliente", "nunique"))
+            .reset_index()
+            )
+    
+    df_clientes_mes.rename(columns={"fecha": "mes"}, inplace=True)
+
+    df_clientes_mes["mes"] = df_clientes_mes["mes"].astype(str)       
+
+
+    fig_cli = px.bar(
+            df_clientes_mes,
+            x="mes",
+            y='clientes_unicos',
+            #histfunc='distinct',
+            title="🎯 Clientes únicos por Mes",
+            #color="fecha",
+            text="clientes_unicos"
+            #text_auto=True,
+            #labels={"fecha": "Mes", "count": "Cantidad de Pedidos"}
+            
+        )
+            
+    st.plotly_chart(
+                fig_cli,
+                use_container_width=True
+            )
+
     col1, col2 = st.columns(2)
 
     # Lista con colores específicos
@@ -243,7 +307,7 @@ if uploaded_file:
         fig_prioridad = px.histogram(
             resultado_df,
             x="prioridad",
-            title="Clientes por prioridad",
+            title="⭐ Clientes por prioridad",
             color="prioridad",
             text_auto=True,
 #            color_discrete_sequence=['red', 'yellow', 'green']
@@ -274,7 +338,7 @@ if uploaded_file:
             prioridad_count,
             names="prioridad",
             values="cantidad",
-            title="Clientes por prioridad",
+            title="✅ Clientes por prioridad",
 #            color_discrete_sequence=colores
             color_discrete_sequence=px.colors.qualitative.G10
         )
@@ -286,7 +350,7 @@ if uploaded_file:
 
 
     
-    # top clientes urgentes
+    # *******************  top clientes urgentes  **********************************
     
     st.subheader("🚨 Top clientes urgentes 🚨")
 
