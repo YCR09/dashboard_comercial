@@ -185,14 +185,14 @@ if uploaded_file:
     resultado_df = resultado_df.sort_values(
         "total_dias"
     )
-
+    total_clientes = df['cliente'].nunique()
 # ********************* KPIs *****************************
     st.markdown("## ✔ KPI's ")
     col1, col2, col3, col4 = st.columns(4)
 
     col1.metric(
-        "Clientes",
-        len(resultado_df)
+        "Total Clientes",
+        total_clientes
     )
 
     col2.metric(
