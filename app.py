@@ -28,7 +28,17 @@ PASSWORD = st.secrets["PASSWORD"]
 
 # Configiración Dashboard
 st.set_page_config(page_title="Frecuencia Predictiva de compras", page_icon="📊", layout="wide")
-st.title("📈 Dashboard -  Pronóstico de Compras")
+
+st.write("⚖️ **Información Legal (Disclaimer) y Exención de Responsabilidad**")
+st.caption(
+        "**Aviso:** Esta herramienta es un simulador con fines exclusivamente informativos, ilustrativos y educativos."
+        "Los resultados, cálculos y proyecciones presentados son estimaciones basadas en los datos introducidos por el usuario y en fórmulas financieras estándar;"
+        "por lo tanto, no garantizan resultados futuros, rendimientos ni el éxito comercial de ninguna operación. "
+        "El uso de este simulador no constituye ni sustituye la asesoría financiera, contable, fiscal o legal profesional."
+        " Cada negocio posee variables únicas y riesgos particulares. El desarrollador de esta herramienta no se hace responsable por pérdidas,"
+        " daños o decisiones comerciales tomadas por el usuario basadas en la información generada por este sistema."
+    )
+st.title("💼 Dashboard - Modelo Predictivo de Compras - 2026", anchor = False)
 st.markdown("---")
 
 # estado login
@@ -55,67 +65,52 @@ if not st.session_state.authenticated:
 
     st.stop()
 
-
-#cargar datos de excel desde el directorio local
-#df = pd.read_excel("ventas_datos.xlsx")
-
-# subir excel
-
-uploaded_file = st.file_uploader(
-    "Sube archivo Excel con dos columnas en minúsculas : cliente , fecha, ventas",
-    type=["xlsx"]
-)
-
-if uploaded_file:
-    df = pd.read_excel(uploaded_file)
-
-#print(df)
-
+def datos(df):
+     
     df["fecha"] = pd.to_datetime(df["fecha"])
 
     df = df.sort_values(["cliente", "fecha"])
 
-#print(df)
+    # 3. Extraer la fecha mínima y máxima
+    fecha_inicio = df['fecha'].min().strftime('%d/%m/%Y')
+    fecha_fin = df['fecha'].max().strftime('%d/%m/%Y')
 
-   # calcular días entre compras
-    
+     # 4. Mostrar el período en un contenedor llamativo al inicio
+    st.info(f"📅 **Período de Análisis detectado:** Del **{fecha_inicio}** al **{fecha_fin}**")
+
+    # calcular días entre compras
     df["dias_entre_compras"] = (
         df.groupby("cliente")["fecha"]
         .diff()
         .dt.days
     )
 
-    #print(df)
-
     resultados = []
 
-    
     # calcular media 
-   
     for cliente, grupo in df.groupby("cliente"):
 
         #intervalos = grupo["dias_entre_compras"].dropna()
         intervalos = grupo["dias_entre_compras"].fillna(0)
 
-        #if len(intervalos) == 0:
+        #if len(intervalos) < 2:
         #    continue
-
+        
         if len(intervalos) < 1:
             continue
-        
-        # calcula solo las 5 últimas compras con tail(5)
+    
+        # calcula meduia móvil solo las 5 últimas compras con tail(5)
         media_dias = intervalos.tail(5).mean()
 
-        #media_dias = intervalos.mean()
-
-         # calcula la media movil ponderada
+        # calcula la media movil ponderada
         intervalos_recientes = intervalos.tail(5)
 
         #calcula el peso de cada cliente según la cantidad de compra
         pesos = np.arange(1, len(intervalos_recientes) + 1)
 
         media_ponderada = (intervalos_recientes * pesos).sum() / sum(pesos)
-        
+
+       
         ultima_fecha = grupo["fecha"].max()
 
         #Calculo de la proxima compra con la media móvil
@@ -137,8 +132,7 @@ if uploaded_file:
         dias_restantes_ponderada = (
             proxima_compra_ponderada - pd.Timestamp.today()
         ).days
-    
-        #calulo de la confinaza del cliente
+  
         desviacion = intervalos_recientes.std()
 
         if desviacion < 10:
@@ -148,10 +142,9 @@ if uploaded_file:
         else:
             confianza = "Baja"
 
-        #calculo de la media de las medias
         media_total = (dias_restantes_media + dias_restantes_ponderada) / 2
 
-         # prioridad
+        # prioridad
         if media_total <= 3:
            prioridad = "Alta"
         elif media_total <= 7:
@@ -162,16 +155,12 @@ if uploaded_file:
         total_ventas = round(grupo["ventas"].sum(), 2)
         media_ventas = round(grupo["ventas"].mean(), 2)
         cantidad_ventas = grupo["ventas"].count()
-    
+        #cantidad_compras = len(grupo)
+
         resultados.append({
             "cliente": cliente,
             "ultima_compra": ultima_fecha.date(),
-#            "media_dias": round(media_dias, 1),
-#           "proxima_compra_media": proxima_compra_media.date(),
-#            "dias_restantes_media": dias_restantes_media,
             "prioridad": prioridad,
-#            "proxima_compra_ponderada": proxima_compra_ponderada.date(),
-#            "dias_restantes_ponderada": dias_restantes_ponderada,
             "confianza": confianza,
             "total_dias": round(media_total, 0),
             "total_ventas": total_ventas,
@@ -185,55 +174,20 @@ if uploaded_file:
     resultado_df = resultado_df.sort_values(
         "total_dias"
     )
-    total_clientes = df['cliente'].nunique()
-# ********************* KPIs *****************************
-    st.markdown("## ✔ KPI's ")
-    col1, col2, col3, col4 = st.columns(4)
 
-    col1.metric(
-        "Total Clientes",
-        total_clientes
-    )
+    #Clientes únicos por mes
 
-    col2.metric(
-        "Alta prioridad",
-        len(
-            resultado_df[
-                resultado_df["prioridad"] == "Alta"
-            ]
-        )
-    )
+    #3. Calcular clientes únicos por mes
+    df_clientes_mes = (
+            df.groupby(df["fecha"].dt.to_period("M"))
+            .agg(clientes_unicos=("cliente", "nunique"))
+            .reset_index()
+            )
+    df_clientes_mes.rename(columns={"fecha": "mes"}, inplace=True)
 
-    col3.metric(
-        "Media días compra",
-        round(
-            resultado_df["total_dias"].abs().mean(),
-            1
-        )
-    )
+    df_clientes_mes["mes"] = df_clientes_mes["mes"].astype(str) 
 
-    col4.metric(
-        #"Media venta", f"€{round(resultado_df['media_ventas'].mean(), 2)}"
-        "Pedidos", len(df)
-        )
-
-    st.divider()
- 
-    #  ************************* tabla principal  ********************************
-   
-    st.subheader("☎️ Lista Ordenada de Clientes próximos a comprar ☎️")
-
-    st.dataframe(
-        resultado_df,
-        use_container_width=True
-    )
-
-    
-    # ***************************  gráficos   **********************************
-
-    st.markdown('## ✔ Análisis de Pedidos y Clientes')
-
-    # Ventas por mes
+    # Pedidos por mes
     df_ventas_mes = (
                 df.groupby(df["fecha"].dt.to_period("M"))
                 .size()
@@ -244,8 +198,68 @@ if uploaded_file:
     df_ventas_mes.rename(columns={"fecha": "mes"}, inplace=True)
 
         # Convertir a texto
-    df_ventas_mes["mes"] = df_ventas_mes["mes"].astype(str)
+    df_ventas_mes["mes"] = df_ventas_mes["mes"].astype(str) 
+    
+    # ********************** KPIs **************************************
+    st.markdown("## ✔ KPI's ")
 
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+
+    col1.metric(
+        "Total Clientes",
+        len(resultado_df)
+    )
+
+    col2.metric(
+        "Media Clientes (mes)",
+        f"{df_clientes_mes["clientes_unicos"].mean():,.0f}"
+        
+    )
+
+    col3.metric(
+        "Alta prioridad",
+        len(
+            resultado_df[
+                resultado_df["prioridad"] == "Alta"
+            ]
+        )
+    )
+    col4.metric(
+        "Media días compra",
+        round(
+            resultado_df["total_dias"].abs().mean(),
+            1
+        )
+    )
+
+    col5.metric(
+        #"Media venta", f"€{round(resultado_df['media_ventas'].mean(), 2)}"
+        "Toptal Pedidos", len(df)
+        )
+    
+    col6.metric(
+        "Media Pedido (mes)",
+        f"{df_ventas_mes["ventas"].mean():,.0f}"
+        
+    )
+
+    st.divider()
+
+    # ******************* tabla principal ***************************
+   
+    st.subheader("☎️ Lista Ordenada de Clientes próximos a comprar ☎️")
+
+    st.dataframe(
+        resultado_df,
+        use_container_width=True
+    )
+
+    
+    # ************************ gráficos ************************** 
+    
+    st.markdown('## ✔ Análisis de Pedidos y Clientes')
+
+    # Gráfico pedidos por mes
     fig_mes = px.bar(
             df_ventas_mes,
             x="mes",
@@ -256,7 +270,7 @@ if uploaded_file:
             #labels={"fecha": "Mes", "count": "Cantidad de Pedidos"}
             
         )
-        #fig_mes.update_layout(bargap=0.2) # Añade espacio entre barras
+    #fig_mes.update_layout(bargap=0.2) # Añade espacio entre barras
     fig_mes.update_traces(textposition="outside")
         
     st.plotly_chart(
@@ -264,19 +278,7 @@ if uploaded_file:
                 use_container_width=True
             )
 
-        #Clientes únicos por mes
-
-        #3. Calcular clientes únicos por mes
-    df_clientes_mes = (
-            df.groupby(df["fecha"].dt.to_period("M"))
-            .agg(clientes_unicos=("cliente", "nunique"))
-            .reset_index()
-            )
-    
-    df_clientes_mes.rename(columns={"fecha": "mes"}, inplace=True)
-
-    df_clientes_mes["mes"] = df_clientes_mes["mes"].astype(str)       
-
+    # Gráfico Clientes únicos por mes
 
     fig_cli = px.bar(
             df_clientes_mes,
@@ -290,16 +292,12 @@ if uploaded_file:
             #labels={"fecha": "Mes", "count": "Cantidad de Pedidos"}
             
         )
-            
     st.plotly_chart(
                 fig_cli,
                 use_container_width=True
             )
 
     col1, col2 = st.columns(2)
-
-    # Lista con colores específicos
-    colores = ['red', 'green', 'yellow']
 
     # gráfico prioridad
     with col1:
@@ -310,10 +308,8 @@ if uploaded_file:
             title="⭐ Clientes por prioridad",
             color="prioridad",
             text_auto=True,
-#            color_discrete_sequence=['red', 'yellow', 'green']
             color_discrete_sequence=px.colors.qualitative.Set1
         )
-
         st.plotly_chart(
             fig_prioridad,
             use_container_width=True
@@ -333,13 +329,11 @@ if uploaded_file:
             "prioridad",
             "cantidad"
         ]
-
         fig_prioridad = px.pie(
             prioridad_count,
             names="prioridad",
             values="cantidad",
-            title="✅ Clientes por prioridad",
-#            color_discrete_sequence=colores
+            title="✅ Clientes por prioridad en %",
             color_discrete_sequence=px.colors.qualitative.G10
         )
 
@@ -348,35 +342,13 @@ if uploaded_file:
             use_container_width=True
         )
 
-
-    
-    # *******************  top clientes urgentes  **********************************
-    
+    # *************************** top clientes urgentes *****************************
     st.subheader("🚨 Top clientes urgentes 🚨")
 
     st.dataframe(
-        resultado_df.head(20),
+        resultado_df.head(15),
         use_container_width=True
     )
-    
-    # exportar csv
-
-    #csv = resultado_df.to_csv(
-    #    index=False
-    #).encode("utf-8")
-
-    #st.download_button(
-    #    "📥 Descargar resultados cvs",
-    #    csv,
-    #    "pronostico.csv",
-    #    "text/csv"
-    #)
-
-    #print(resultado_df)
-
-    
-    # exportar excel
-    
 
     excel_buffer = io.BytesIO()
 
@@ -388,9 +360,8 @@ if uploaded_file:
         resultado_df.to_excel(
             writer,
             index=False,
-            sheet_name="Lista"
+            sheet_name="Predicción"
         )
-
     excel_buffer.seek(0)
 
     st.download_button(
@@ -399,9 +370,56 @@ if uploaded_file:
         file_name="pronóstico.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+#cargar datos de excel desde el directorio local
+mensaje = st.warning(" 👈 Ve a la sección del menú lateral **Fuente de Datos** y selecciona una opción de datos para analizar")
+def main():
+    opcion = st.sidebar.radio(
+            " **FUENTE DE DATOS :**",
+            (
+                "Seleccione una opción...",
+                "📝 Datos de demostración",
+                "📁 Cargar archivo Excel",
+                #"☁️ Google Drive Sheets"
+            ),
+            index=0
+        )
+    if opcion == "📝 Datos de demostración":
+            mensaje.empty()
+            try:
+                df = pd.read_excel("ventas_datos.xlsx")
+                
+                #st.session_state['df_excel'] = df
+
+                st.success("Datos de demostración cargados.")
+                #st.dataframe(df.head())
+                
+                datos(df)
+            except Exception as e:
+                st.error(f"Error al leer el archivo {e}")
+    elif opcion == "📁 Cargar archivo Excel":
+            mensaje.empty()
+            uploaded_file = st.file_uploader(
+                "Subir un archivo Excel con las siguientes columnas en este orden a analizar :  | **cliente** | **fecha** | **ventas** | -> la columna  **cliente** es el código o id del cliente.",
+                type=["xlsx"]
+            )
+            if uploaded_file:
+                try:
+                    df = pd.read_excel(uploaded_file)
+
+                    # 2. Convertir los nombres de las columnas a minúsculas
+                    df.columns = df.columns.str.strip().str.lower()
+                    st.success("Datos de archivo **excel** cargados.")
+                    datos(df)
+                except Exception as e:
+                            st.error(f"Error al leer el archivo {e}")
+
     # botón cerrar sesión
     if st.sidebar.button("🚪 Cerrar sesión"):
 
         st.session_state.authenticated = False
 
         st.rerun()
+    
+if __name__ == "__main__":
+    main()  
+
