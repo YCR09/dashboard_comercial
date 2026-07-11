@@ -72,3 +72,5 @@ Análisis de clientes
 Predicción de compras recurrentes
 
 Proyecto desarrollado para análisis predictivo de clientes y automatización comercial.
+
+##⭐ Si este proyecto te ha resultado útil, no olvides darle una estrella al repositorio.
